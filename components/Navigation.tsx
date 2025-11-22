@@ -37,7 +37,7 @@ export const Navigation: React.FC<NavigationProps> = ({ currentView, onChangeVie
         joinSection.scrollIntoView({ behavior: 'smooth' });
       }
     } else {
-      onChangeView(view);
+      onChangeView(view as View);
       setIsMobileMenuOpen(false);
     }
   };
@@ -67,7 +67,7 @@ export const Navigation: React.FC<NavigationProps> = ({ currentView, onChangeVie
               <button
                 key={item.view}
                 onClick={() => handleNavClick(item.view as View | 'JOIN')}
-                className={`text-sm font-medium transition-colors hover:text-bamboo-600 ${currentView === item.view && item.view !== 'JOIN' ? 'text-bamboo-600 font-bold' : 'text-gray-500'}`}
+                className={`text-sm font-medium transition-colors hover:text-bamboo-600 ${(item.view as any) === currentView ? 'text-bamboo-600 font-bold' : 'text-gray-500'}`}
               >
                 {item.label}
               </button>
