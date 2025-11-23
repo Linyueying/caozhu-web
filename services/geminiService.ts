@@ -2,14 +2,15 @@ import { GoogleGenAI } from "@google/genai";
 import { AIMode } from "../types";
 
 // Configuration
-const API_KEY = process.env.API_KEY || ''; 
+// Vite define will replace process.env.API_KEY with the string literal
+const API_KEY = process.env.API_KEY as string; 
 const BASE_URL = 'https://api-proxy.me/gemini/v1beta';
 const MODEL_NAME = "gemini-2.5-flash";
 
-// Initialize Client with Proxy
+// --- 初始化 Client (关键修正) ---
+// baseUrl 必须包含在第一个配置对象中，否则会被忽略
 const ai = new GoogleGenAI({ 
   apiKey: API_KEY,
-}, {
   baseUrl: BASE_URL
 });
 
@@ -19,14 +20,14 @@ export const generateLiteraryContent = async (
   onStream: (text: string, isComplete: boolean) => void
 ): Promise<string> => {
   
-  // 1. Log Configuration (Masked Key)
-  console.log(`[Gemini Service] Initializing request...`);
-  console.log(`[Gemini Service] Proxy: ${BASE_URL}`);
-  console.log(`[Gemini Service] Model: ${MODEL_NAME}`);
-  console.log(`[Gemini Service] Key Status: ${API_KEY ? 'Present (Ends with ...' + API_KEY.slice(-4) + ')' : 'Missing'}`);
+  // 1. Log Configuration
+  console.log(`%c[Gemini Service] Init`, "color: #22c55e; font-weight: bold;");
+  console.log(`Target URL Base: ${BASE_URL}`);
+  console.log(`Model: ${MODEL_NAME}`);
+  console.log(`API Key: ${API_KEY ? 'Loaded (' + API_KEY.slice(0, 4) + '...)' : 'MISSING'}`);
 
   if (!API_KEY) {
-    console.error("[Gemini Service] Error: API Key is missing.");
+    console.error("[Gemini Service] 🔴 Error: API Key is missing.");
     throw new Error("API Key is missing.");
   }
 
@@ -69,13 +70,12 @@ export const generateLiteraryContent = async (
       break;
   }
 
-  console.log(`[Gemini Service] Mode: ${mode}`);
-  console.log(`[Gemini Service] System Instruction Preview: ${systemInstruction.substring(0, 50)}...`);
-
   try {
     // 3. Send Request
-    console.log("[Gemini Service] Sending stream request...");
+    console.log("[Gemini Service] 📡 Sending stream request...");
     
+    // 这里的 generateContentStream 会自动拼接 baseUrl + /models/... 
+    // 如果日志报错 404，可能是路径拼接重复，但大多数代理支持标准结构。
     const responseStream = await ai.models.generateContentStream({
       model: MODEL_NAME,
       contents: [{ parts: [{ text: `${promptPrefix}${input}` }] }],
@@ -85,7 +85,7 @@ export const generateLiteraryContent = async (
       },
     });
 
-    console.log("[Gemini Service] Connection established. Receiving stream...");
+    console.log("[Gemini Service] 🟢 Connection established. Receiving stream...");
 
     let fullText = "";
     let chunkCount = 0;
@@ -96,27 +96,24 @@ export const generateLiteraryContent = async (
       if (text) {
         fullText += text;
         chunkCount++;
-        // Log first few chunks to verify data flow
-        if (chunkCount <= 3) {
-            console.log(`[Gemini Service] Received chunk #${chunkCount}:`, text.substring(0, 20) + "...");
+        // Log first chunk to verify content
+        if (chunkCount === 1) {
+            console.log(`[Gemini Service] First chunk received: "${text.substring(0, 10)}..."`);
         }
         onStream(fullText, false);
       }
     }
 
-    console.log(`[Gemini Service] Stream complete. Total chunks: ${chunkCount}. Total length: ${fullText.length}`);
+    console.log(`[Gemini Service] ✅ Stream complete. Total length: ${fullText.length}`);
     onStream(fullText, true);
     return fullText;
 
   } catch (error: any) {
-    console.error("[Gemini Service] API Request Failed:", error);
+    console.error("%c[Gemini Service] 🔴 API Request Failed", "color: #ef4444; font-weight: bold;");
+    console.error("Error Details:", error);
     
-    // Log specific error details if available
-    if (error.response) {
-        console.error("[Gemini Service] Error Status:", error.response.status);
-        console.error("[Gemini Service] Error Body:", await error.response.text());
-    } else if (error.message) {
-        console.error("[Gemini Service] Error Message:", error.message);
+    if (error.message && error.message.includes('fetch')) {
+        console.error("提示：网络请求失败。请检查：\n1. 代理地址是否允许跨域 (CORS)？\n2. 代理地址是否支持 v1beta 路径？");
     }
 
     throw error;
