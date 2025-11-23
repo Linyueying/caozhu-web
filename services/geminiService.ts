@@ -1,11 +1,16 @@
-
 import { GoogleGenAI } from "@google/genai";
 import { AIMode } from "../types";
 
-const apiKey = process.env.API_KEY || ''; 
+// Configuration
+const API_KEY = process.env.API_KEY || ''; 
+const BASE_URL = 'https://api-proxy.me/gemini/v1beta';
+const MODEL_NAME = "gemini-2.5-flash";
+
+// Initialize Client with Proxy
 const ai = new GoogleGenAI({ 
-  apiKey,
-  baseUrl: 'https://api-proxy.me/gemini/v1beta'
+  apiKey: API_KEY,
+}, {
+  baseUrl: BASE_URL
 });
 
 export const generateLiteraryContent = async (
@@ -14,13 +19,20 @@ export const generateLiteraryContent = async (
   onStream: (text: string, isComplete: boolean) => void
 ): Promise<string> => {
   
-  if (!apiKey) {
+  // 1. Log Configuration (Masked Key)
+  console.log(`[Gemini Service] Initializing request...`);
+  console.log(`[Gemini Service] Proxy: ${BASE_URL}`);
+  console.log(`[Gemini Service] Model: ${MODEL_NAME}`);
+  console.log(`[Gemini Service] Key Status: ${API_KEY ? 'Present (Ends with ...' + API_KEY.slice(-4) + ')' : 'Missing'}`);
+
+  if (!API_KEY) {
+    console.error("[Gemini Service] Error: API Key is missing.");
     throw new Error("API Key is missing.");
   }
 
+  // 2. Prepare Prompt
   let systemInstruction = "";
   let promptPrefix = "请分析以下文本：\n\n";
-  const modelName = "gemini-2.5-flash"; 
 
   switch (mode) {
     case AIMode.SUMMARY:
@@ -57,9 +69,15 @@ export const generateLiteraryContent = async (
       break;
   }
 
+  console.log(`[Gemini Service] Mode: ${mode}`);
+  console.log(`[Gemini Service] System Instruction Preview: ${systemInstruction.substring(0, 50)}...`);
+
   try {
+    // 3. Send Request
+    console.log("[Gemini Service] Sending stream request...");
+    
     const responseStream = await ai.models.generateContentStream({
-      model: modelName,
+      model: MODEL_NAME,
       contents: [{ parts: [{ text: `${promptPrefix}${input}` }] }],
       config: {
         systemInstruction: systemInstruction,
@@ -67,18 +85,40 @@ export const generateLiteraryContent = async (
       },
     });
 
+    console.log("[Gemini Service] Connection established. Receiving stream...");
+
     let fullText = "";
+    let chunkCount = 0;
+
+    // 4. Handle Stream
     for await (const chunk of responseStream) {
       const text = chunk.text;
       if (text) {
         fullText += text;
+        chunkCount++;
+        // Log first few chunks to verify data flow
+        if (chunkCount <= 3) {
+            console.log(`[Gemini Service] Received chunk #${chunkCount}:`, text.substring(0, 20) + "...");
+        }
         onStream(fullText, false);
       }
     }
+
+    console.log(`[Gemini Service] Stream complete. Total chunks: ${chunkCount}. Total length: ${fullText.length}`);
     onStream(fullText, true);
     return fullText;
-  } catch (error) {
-    console.error("Gemini API Error:", error);
+
+  } catch (error: any) {
+    console.error("[Gemini Service] API Request Failed:", error);
+    
+    // Log specific error details if available
+    if (error.response) {
+        console.error("[Gemini Service] Error Status:", error.response.status);
+        console.error("[Gemini Service] Error Body:", await error.response.text());
+    } else if (error.message) {
+        console.error("[Gemini Service] Error Message:", error.message);
+    }
+
     throw error;
   }
 };
