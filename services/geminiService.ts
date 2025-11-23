@@ -1,15 +1,18 @@
-
 import { GoogleGenAI } from "@google/genai";
 import { AIMode } from "../types";
 
 const apiKey = process.env.API_KEY || ''; 
 
-// Debug log for initialization
-console.log(`[Gemini Service] Initializing... API_KEY present: ${!!apiKey}, BaseURL: https://api-proxy.me/gemini/v1beta`);
+// 1. 设置代理地址
+// 注意：去掉末尾的 /v1beta，因为 SDK 会自动拼接版本号。
+// 最终请求地址将会是：https://api-proxy.me/gemini/v1beta/models/gemini-2.5-flash:...
+const BASE_URL = 'https://api-proxy.me/gemini';
+
+console.log(`[Gemini Service] Initializing... API_KEY present: ${!!apiKey}, BaseURL: ${BASE_URL}`);
 
 const ai = new GoogleGenAI({ 
   apiKey,
-  baseUrl: 'https://api-proxy.me/gemini/v1beta'
+  baseUrl: BASE_URL
 });
 
 export const generateLiteraryContent = async (
@@ -25,6 +28,8 @@ export const generateLiteraryContent = async (
 
   let systemInstruction = "";
   let promptPrefix = "请分析以下文本：\n\n";
+  
+  // 2. 更新模型名称为 gemini-2.5-flash
   const modelName = "gemini-2.5-flash"; 
 
   console.log(`[Gemini Service] 🚀 Starting generation. Mode: ${mode}, Model: ${modelName}`);
@@ -65,8 +70,9 @@ export const generateLiteraryContent = async (
   }
 
   try {
-    console.log(`[Gemini Service] 📡 Sending request to ${ai.baseUrl}...`);
+    console.log(`[Gemini Service] 📡 Sending request to ${ai.baseUrl || BASE_URL}...`);
     
+    // 调用 generateContentStream
     const responseStream = await ai.models.generateContentStream({
       model: modelName,
       contents: [{ parts: [{ text: `${promptPrefix}${input}` }] }],
@@ -80,9 +86,11 @@ export const generateLiteraryContent = async (
 
     let fullText = "";
     for await (const chunk of responseStream) {
-      const text = chunk.text;
+      // 在新版 SDK 中，chunk.text 可能直接是文本或通过方法获取
+      // 如果 chunk.text 报错，请尝试使用 chunk.candidates[0].content.parts[0].text
+      const text = chunk.text; 
+      
       if (text) {
-        // Log chunk size to avoid flooding console with text, but show activity
         console.log(`[Gemini Service] 📦 Received chunk (${text.length} chars)`);
         fullText += text;
         onStream(fullText, false);
@@ -93,7 +101,6 @@ export const generateLiteraryContent = async (
     return fullText;
   } catch (error) {
     console.error("[Gemini Service] 🔴 API Error Details:", error);
-    // Log specifically if it might be a network/proxy issue
     if (error instanceof Error) {
         console.error(`[Gemini Service] Error Message: ${error.message}`);
     }
