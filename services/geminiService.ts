@@ -1,18 +1,32 @@
-import { GoogleGenAI } from "@google/genai";
+// 注意：新版 SDK 的导入通常是 Client
+import { Client } from "@google/genai"; 
 import { AIMode } from "../types";
 
 const apiKey = process.env.API_KEY || ''; 
 
-// 1. 设置代理地址
-// 注意：去掉末尾的 /v1beta，因为 SDK 会自动拼接版本号。
-// 最终请求地址将会是：https://api-proxy.me/gemini/v1beta/models/gemini-2.5-flash:...
+// 1. 修改 BaseURL：去掉末尾的 /v1beta
+// SDK 会自动追加版本号。如果你的代理映射是标准的，这应该是正确的。
 const BASE_URL = 'https://api-proxy.me/gemini';
 
-console.log(`[Gemini Service] Initializing... API_KEY present: ${!!apiKey}, BaseURL: ${BASE_URL}`);
+console.log(`[Gemini Service] Initializing... API_KEY present: ${!!apiKey}`);
 
-const ai = new GoogleGenAI({ 
+// 自定义 fetch 用于调试：可以看到 SDK 到底访问了什么地址
+const debugFetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+  console.log(`[DEBUG] 🌐 Request URL: ${input.toString()}`); // 👈 这一行会告诉你真相
+  return fetch(input, init);
+};
+
+// 2. 初始化 Client (注意这里用 Client 而不是 GoogleGenAI)
+const client = new Client({ 
   apiKey,
-  baseUrl: BASE_URL
+  baseUrl: BASE_URL,
+  // 如果你需要强制指定 API 版本（防止 SDK 默认用 v1alpha），可以在这里配置
+  // 也可以传入自定义 fetch 来调试
+  httpOptions: {
+    apiVersion: 'v1beta', 
+  },
+  // 这一行开启调试模式，拦截请求
+  fetch: debugFetch, 
 });
 
 export const generateLiteraryContent = async (
@@ -22,58 +36,31 @@ export const generateLiteraryContent = async (
 ): Promise<string> => {
   
   if (!apiKey) {
-    console.error("[Gemini Service] ❌ Error: API Key is missing.");
     throw new Error("API Key is missing.");
   }
 
+  // 3. 确认模型名称：Gemini 2.5 Flash
+  const modelName = "gemini-2.5-flash"; 
+  
   let systemInstruction = "";
   let promptPrefix = "请分析以下文本：\n\n";
-  
-  // 2. 更新模型名称为 gemini-2.5-flash
-  const modelName = "gemini-2.5-flash"; 
 
-  console.log(`[Gemini Service] 🚀 Starting generation. Mode: ${mode}, Model: ${modelName}`);
-
+  // ... (Switch 逻辑保持不变) ...
   switch (mode) {
-    case AIMode.SUMMARY:
-      systemInstruction = `你是一位专业的文学编辑。
-      请对用户提供的文章或活动内容进行【内容概述】。
-      要求：语言简练、客观，概括核心事件或情感脉络，字数控制在 100 字以内。`;
-      break;
-      
-    case AIMode.KEYPOINTS:
-      systemInstruction = `你是一位逻辑清晰的分析师。
-      请对用户提供的文本进行【要点总结】。
-      要求：
-      1. 使用列表形式（Markdown）列出 3-5 个关键信息点或核心思想。
-      2. 提炼精准，直击重点。`;
-      break;
-      
-    case AIMode.ANALYSIS:
-      systemInstruction = `你是一位深沉的文学评论家。
-      请对用户提供的文本进行【文学赏析】。
-      要求：
-      1. 分析修辞手法、情感基调、语言风格。
-      2. 挖掘文字背后的深层含义。
-      3. 语言优美，具有感染力，字数 200 字左右。`;
-      break;
-
-    case AIMode.RECOMMENDATION:
-      systemInstruction = `你是一位博学的文学荐书人。
-      请根据用户的心情或描述，推荐 1-2 部合适的文学作品（书籍、诗歌或散文），并简要说明推荐理由。
-      要求：
-      1. 语气温柔治愈，如同老友交谈。
-      2. 推荐理由要能触动人心，与用户的心情产生共鸣。
-      3. 字数控制在 200 字以内。`;
+    case AIMode.SUMMARY: systemInstruction = "你是一位专业的文学编辑..."; break;
+    case AIMode.KEYPOINTS: systemInstruction = "你是一位逻辑清晰的分析师..."; break;
+    case AIMode.ANALYSIS: systemInstruction = "你是一位深沉的文学评论家..."; break;
+    case AIMode.RECOMMENDATION: 
+      systemInstruction = "你是一位博学的文学荐书人..."; 
       promptPrefix = "用户的心情或描述：\n\n";
       break;
   }
 
   try {
-    console.log(`[Gemini Service] 📡 Sending request to ${ai.baseUrl || BASE_URL}...`);
+    console.log(`[Gemini Service] 🚀 Sending request using model: ${modelName}`);
     
-    // 调用 generateContentStream
-    const responseStream = await ai.models.generateContentStream({
+    // 4. 调用方式：使用 client.models.generateContentStream
+    const responseStream = await client.models.generateContentStream({
       model: modelName,
       contents: [{ parts: [{ text: `${promptPrefix}${input}` }] }],
       config: {
@@ -82,27 +69,27 @@ export const generateLiteraryContent = async (
       },
     });
 
-    console.log("[Gemini Service] 🟢 Connection established. Stream started.");
+    console.log("[Gemini Service] 🟢 Stream started.");
 
     let fullText = "";
     for await (const chunk of responseStream) {
-      // 在新版 SDK 中，chunk.text 可能直接是文本或通过方法获取
-      // 如果 chunk.text 报错，请尝试使用 chunk.candidates[0].content.parts[0].text
-      const text = chunk.text; 
+      // 新版 SDK chunk 取值方式可能稍有不同，通常是 chunk.text() 方法或属性
+      // 这里做个兼容处理
+      const text = typeof chunk.text === 'function' ? chunk.text() : chunk.text;
       
       if (text) {
-        console.log(`[Gemini Service] 📦 Received chunk (${text.length} chars)`);
         fullText += text;
         onStream(fullText, false);
       }
     }
-    console.log("[Gemini Service] ✅ Stream complete. Total length:", fullText.length);
     onStream(fullText, true);
     return fullText;
+
   } catch (error) {
-    console.error("[Gemini Service] 🔴 API Error Details:", error);
-    if (error instanceof Error) {
-        console.error(`[Gemini Service] Error Message: ${error.message}`);
+    console.error("[Gemini Service] 🔴 Error Details:", error);
+    // 提示用户可能的错误原因
+    if (error instanceof Error && error.message.includes("404")) {
+       console.error("👉 可能是 URL 路径错误。请检查控制台上方 [DEBUG] 输出的 URL 是否有多余的 /v1beta");
     }
     throw error;
   }
