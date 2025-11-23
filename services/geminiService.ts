@@ -1,17 +1,15 @@
+
 import { GoogleGenAI } from "@google/genai";
 import { AIMode } from "../types";
 
-// Configuration
-// Vite define will replace process.env.API_KEY with the string literal
-const API_KEY = process.env.API_KEY as string; 
-const BASE_URL = 'https://api-proxy.me/gemini/v1beta';
-const MODEL_NAME = "gemini-2.5-flash";
+const apiKey = process.env.API_KEY || ''; 
 
-// --- 初始化 Client (关键修正) ---
-// baseUrl 必须包含在第一个配置对象中，否则会被忽略
+// Debug log for initialization
+console.log(`[Gemini Service] Initializing... API_KEY present: ${!!apiKey}, BaseURL: https://api-proxy.me/gemini/v1beta`);
+
 const ai = new GoogleGenAI({ 
-  apiKey: API_KEY,
-  baseUrl: BASE_URL
+  apiKey,
+  baseUrl: 'https://api-proxy.me/gemini/v1beta'
 });
 
 export const generateLiteraryContent = async (
@@ -20,20 +18,16 @@ export const generateLiteraryContent = async (
   onStream: (text: string, isComplete: boolean) => void
 ): Promise<string> => {
   
-  // 1. Log Configuration
-  console.log(`%c[Gemini Service] Init`, "color: #22c55e; font-weight: bold;");
-  console.log(`Target URL Base: ${BASE_URL}`);
-  console.log(`Model: ${MODEL_NAME}`);
-  console.log(`API Key: ${API_KEY ? 'Loaded (' + API_KEY.slice(0, 4) + '...)' : 'MISSING'}`);
-
-  if (!API_KEY) {
-    console.error("[Gemini Service] 🔴 Error: API Key is missing.");
+  if (!apiKey) {
+    console.error("[Gemini Service] ❌ Error: API Key is missing.");
     throw new Error("API Key is missing.");
   }
 
-  // 2. Prepare Prompt
   let systemInstruction = "";
   let promptPrefix = "请分析以下文本：\n\n";
+  const modelName = "gemini-2.5-flash"; 
+
+  console.log(`[Gemini Service] 🚀 Starting generation. Mode: ${mode}, Model: ${modelName}`);
 
   switch (mode) {
     case AIMode.SUMMARY:
@@ -71,13 +65,10 @@ export const generateLiteraryContent = async (
   }
 
   try {
-    // 3. Send Request
-    console.log("[Gemini Service] 📡 Sending stream request...");
+    console.log(`[Gemini Service] 📡 Sending request to ${ai.baseUrl}...`);
     
-    // 这里的 generateContentStream 会自动拼接 baseUrl + /models/... 
-    // 如果日志报错 404，可能是路径拼接重复，但大多数代理支持标准结构。
     const responseStream = await ai.models.generateContentStream({
-      model: MODEL_NAME,
+      model: modelName,
       contents: [{ parts: [{ text: `${promptPrefix}${input}` }] }],
       config: {
         systemInstruction: systemInstruction,
@@ -85,37 +76,27 @@ export const generateLiteraryContent = async (
       },
     });
 
-    console.log("[Gemini Service] 🟢 Connection established. Receiving stream...");
+    console.log("[Gemini Service] 🟢 Connection established. Stream started.");
 
     let fullText = "";
-    let chunkCount = 0;
-
-    // 4. Handle Stream
     for await (const chunk of responseStream) {
       const text = chunk.text;
       if (text) {
+        // Log chunk size to avoid flooding console with text, but show activity
+        console.log(`[Gemini Service] 📦 Received chunk (${text.length} chars)`);
         fullText += text;
-        chunkCount++;
-        // Log first chunk to verify content
-        if (chunkCount === 1) {
-            console.log(`[Gemini Service] First chunk received: "${text.substring(0, 10)}..."`);
-        }
         onStream(fullText, false);
       }
     }
-
-    console.log(`[Gemini Service] ✅ Stream complete. Total length: ${fullText.length}`);
+    console.log("[Gemini Service] ✅ Stream complete. Total length:", fullText.length);
     onStream(fullText, true);
     return fullText;
-
-  } catch (error: any) {
-    console.error("%c[Gemini Service] 🔴 API Request Failed", "color: #ef4444; font-weight: bold;");
-    console.error("Error Details:", error);
-    
-    if (error.message && error.message.includes('fetch')) {
-        console.error("提示：网络请求失败。请检查：\n1. 代理地址是否允许跨域 (CORS)？\n2. 代理地址是否支持 v1beta 路径？");
+  } catch (error) {
+    console.error("[Gemini Service] 🔴 API Error Details:", error);
+    // Log specifically if it might be a network/proxy issue
+    if (error instanceof Error) {
+        console.error(`[Gemini Service] Error Message: ${error.message}`);
     }
-
     throw error;
   }
 };
