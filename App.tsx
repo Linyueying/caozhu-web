@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { View, LiteraryWork, Activity } from './types';
 import { Navigation } from './components/Navigation';
@@ -11,6 +10,7 @@ import { ActivityDetail } from './components/ActivityDetail';
 import { InkCursor } from './components/InkCursor';
 import { DailyVerse } from './components/DailyVerse';
 import { ReadingRoom } from './components/ReadingRoom';
+import { Footer } from './components/Footer';
 import { Users, ArrowUpRight, X, MessageCircle } from 'lucide-react';
 
 const App: React.FC = () => {
@@ -47,6 +47,12 @@ const App: React.FC = () => {
   const handleViewMoreWorks = () => {
     setCurrentView(View.WORKS);
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Helper for footer navigation to ensure scroll to top
+  const handleFooterNavigate = (view: View) => {
+      setCurrentView(view);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const renderContent = () => {
@@ -139,19 +145,7 @@ const App: React.FC = () => {
       
       {/* Footer - Only show on non-reading views */}
       {currentView !== View.READING && currentView !== View.ACTIVITY_DETAIL && (
-        <footer className="bg-white py-8 border-t border-gray-100 relative z-10">
-            <div className="max-w-6xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4 opacity-60 hover:opacity-100 transition-opacity">
-            <div className="flex items-center gap-2">
-                <span className="font-serif font-bold text-sm text-ink">草竹</span>
-                <span className="text-[10px] text-gray-300">•</span>
-                <span className="text-[10px] text-gray-400 uppercase tracking-wider">Since 1993</span>
-            </div>
-
-            <div className="text-[10px] text-gray-400 font-sans">
-                Pucheng No.1 High School
-            </div>
-            </div>
-        </footer>
+        <Footer onNavigate={handleFooterNavigate} />
       )}
 
       {/* Join Us Modal */}
