@@ -62,7 +62,7 @@ export const ACTIVITIES: Activity[] = [
     date: '2025.12',
     location: '教学楼教室',
     description: '天黑请闭眼。这是一场逻辑与演技的博弈，在教学楼的夜色中寻找真相。优胜者将获得社团精心准备的神秘奖品与礼品。',
-    image: 'https://images.unsplash.com/photo-1534375971785-5c18317f72e0?q=80&w=1000&auto=format&fit=crop', // More reliable Poker/Cards/Mystery image
+    image: 'https://images.unsplash.com/photo-1502823403499-6ccfcf4fb453?q=80&w=1000&auto=format&fit=crop', // Night Sky/Mystery/Safe Image
     status: 'Upcoming'
   },
   {

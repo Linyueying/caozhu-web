@@ -68,6 +68,7 @@ export const Showcase: React.FC<ShowcaseProps> = ({ onRead, onViewMore }) => {
                   <img 
                     src={work.imageUrl} 
                     alt={work.title}
+                    loading="lazy"
                     className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105 grayscale-[0.1] group-hover:grayscale-0"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-ink/90 via-transparent to-transparent opacity-60 group-hover:opacity-80 transition-opacity"></div>

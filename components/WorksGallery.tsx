@@ -15,11 +15,11 @@ export const WorksGallery: React.FC<WorksGalleryProps> = ({ onRead }) => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-mist py-24 px-6 md:px-12 animate-fade-in">
+    <div className="min-h-screen bg-mist pt-32 pb-24 px-6 md:px-12">
       <div className="max-w-7xl mx-auto">
         
         {/* Header */}
-        <div className="mb-16 text-center">
+        <div className="mb-16 text-center animate-slide-up opacity-0" style={{ animationDelay: '0ms' }}>
             <h2 className="text-4xl md:text-5xl font-serif font-bold text-ink mb-4">
                 佳作画廊
             </h2>
@@ -34,14 +34,15 @@ export const WorksGallery: React.FC<WorksGalleryProps> = ({ onRead }) => {
                 <div 
                     key={work.id}
                     onClick={() => onRead(work)}
-                    className="group relative bg-white rounded-[2rem] overflow-hidden border border-gray-100 shadow-sm hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 cursor-pointer flex flex-col h-full"
-                    style={{ animationDelay: `${index * 100}ms` }}
+                    className="group relative bg-white rounded-[2rem] overflow-hidden border border-gray-100 shadow-sm hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 cursor-pointer flex flex-col h-full animate-slide-up opacity-0"
+                    style={{ animationDelay: `${(index + 1) * 100}ms` }}
                 >
                     {/* Image Aspect Ratio 4:3 for Grid */}
                     <div className="aspect-[4/3] overflow-hidden relative">
                         <img 
                             src={work.imageUrl} 
                             alt={work.title}
+                            loading="lazy"
                             className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 grayscale-[0.1] group-hover:grayscale-0"
                         />
                         <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider text-ink shadow-sm z-10">
@@ -81,7 +82,7 @@ export const WorksGallery: React.FC<WorksGalleryProps> = ({ onRead }) => {
         </div>
 
         {/* End Marker */}
-        <div className="mt-20 text-center opacity-40">
+        <div className="mt-20 text-center opacity-0 animate-slide-up" style={{ animationDelay: '600ms' }}>
             <div className="w-1 h-12 bg-gray-300 mx-auto mb-4"></div>
             <span className="font-serif text-sm text-gray-400 tracking-widest">THE END</span>
         </div>

@@ -3,12 +3,15 @@ import { GoogleGenAI } from "@google/genai";
 import { AIMode } from "../types";
 
 const apiKey = process.env.API_KEY || ''; 
-const ai = new GoogleGenAI({ apiKey });
+const ai = new GoogleGenAI({ 
+  apiKey,
+  baseUrl: 'https://api-proxy.me/gemini/v1beta'
+});
 
 export const generateLiteraryContent = async (
   input: string,
   mode: AIMode,
-  onStream: (text: string) => void
+  onStream: (text: string, isComplete: boolean) => void
 ): Promise<string> => {
   
   if (!apiKey) {
@@ -69,9 +72,10 @@ export const generateLiteraryContent = async (
       const text = chunk.text;
       if (text) {
         fullText += text;
-        onStream(fullText);
+        onStream(fullText, false);
       }
     }
+    onStream(fullText, true);
     return fullText;
   } catch (error) {
     console.error("Gemini API Error:", error);

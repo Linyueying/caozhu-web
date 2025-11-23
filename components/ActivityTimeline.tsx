@@ -1,27 +1,34 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useRef, useEffect } from 'react';
 import { ACTIVITIES } from '../constants';
 import { Activity } from '../types';
-import { Calendar, ArrowRight, X, MapPin } from 'lucide-react';
-import { AIAssistant } from './AIAssistant';
+import { MapPin, ArrowRight } from 'lucide-react';
 
-export const ActivityTimeline: React.FC = () => {
-  const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
+interface ActivityTimelineProps {
+  onViewActivity: (activity: Activity) => void;
+}
 
-  // Lock body scroll when modal is open
+export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({ onViewActivity }) => {
+  const sectionRef = useRef<HTMLElement>(null);
+
   useEffect(() => {
-    if (selectedActivity) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
-    }
-    return () => {
-      document.body.style.overflow = 'unset';
-    };
-  }, [selectedActivity]);
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('reveal-visible');
+          }
+        });
+      },
+      { threshold: 0.1 }
+    );
+
+    if (sectionRef.current) observer.observe(sectionRef.current);
+    return () => observer.disconnect();
+  }, []);
 
   return (
-    <section className="py-24 bg-[#fcfcfc] relative">
+    <section ref={sectionRef} className="py-24 bg-[#fcfcfc] relative reveal-on-scroll">
       <div className="max-w-5xl mx-auto px-6">
         
         {/* Section Header */}
@@ -42,10 +49,10 @@ export const ActivityTimeline: React.FC = () => {
             const [year, month] = activity.date.split('.'); // Expects 'YYYY.MM'
             
             return (
-            <div key={activity.id} className="reveal group cursor-pointer" onClick={() => setSelectedActivity(activity)}>
+            <div key={activity.id} className="reveal group cursor-pointer" onClick={() => onViewActivity(activity)}>
                 <div className="flex flex-col md:flex-row gap-8 md:items-stretch">
                     
-                    {/* Left: Date Badge (Stylish) */}
+                    {/* Left: Date Badge */}
                     <div className="hidden md:flex flex-col items-center justify-start pt-4 min-w-[80px] border-r border-gray-100 pr-8">
                         <span className="text-4xl font-serif font-bold text-ink/20 group-hover:text-bamboo-600 transition-colors duration-500">{month}</span>
                         <span className="text-[10px] text-gray-400 uppercase tracking-widest mt-1">月 / {year}</span>
@@ -112,65 +119,6 @@ export const ActivityTimeline: React.FC = () => {
           )})}
         </div>
       </div>
-
-      {/* Activity Details Modal */}
-      {selectedActivity && (
-        <div className="fixed inset-0 z-[100] w-screen h-screen flex items-center justify-center bg-ink/60 backdrop-blur-md animate-fade-in p-4 overflow-hidden">
-            <div className="bg-white w-full max-w-2xl max-h-[90vh] overflow-hidden shadow-2xl relative flex flex-col animate-slide-up rounded-2xl">
-                
-                {/* Modal Header Image */}
-                <div className="relative h-48 md:h-64 shrink-0">
-                    <img src={selectedActivity.image} alt={selectedActivity.title} className="w-full h-full object-cover" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
-                    <button 
-                        onClick={() => setSelectedActivity(null)} 
-                        className="absolute top-4 right-4 p-2 bg-black/20 hover:bg-black/40 text-white rounded-full backdrop-blur-md transition-colors z-10"
-                    >
-                        <X size={20} />
-                    </button>
-                    <div className="absolute bottom-6 left-6 text-white">
-                         <div className="flex items-center gap-2 mb-2 text-sm font-medium opacity-90">
-                             <span className={`px-2 py-0.5 rounded text-xs ${
-                                 selectedActivity.status === 'Upcoming' ? 'bg-bamboo-600' : 'bg-gray-600'
-                             }`}>{selectedActivity.status === 'Upcoming' ? '即将开始' : '已结束'}</span>
-                             <span className="flex items-center gap-1"><Calendar size={14}/> {selectedActivity.date}</span>
-                         </div>
-                         <h2 className="text-2xl md:text-3xl font-serif font-bold">{selectedActivity.title}</h2>
-                    </div>
-                </div>
-
-                {/* Modal Content */}
-                <div className="flex-1 overflow-y-auto p-6 md:p-8 custom-scrollbar relative">
-                    
-                    {/* AI Assistant Button - Sticky Top Right */}
-                    <div className="sticky top-0 right-0 z-20 flex justify-end pointer-events-none">
-                       <div className="pointer-events-auto">
-                         <AIAssistant 
-                            content={`活动名称：${selectedActivity.title}\n时间：${selectedActivity.date}\n地点：${selectedActivity.location}\n简介：${selectedActivity.description}`} 
-                            contextLabel="活动"
-                            direction="down"
-                          />
-                       </div>
-                    </div>
-
-                    <div className="prose prose-stone max-w-none font-serif mt-4 pb-20">
-                        <p className="lead text-lg text-gray-600">{selectedActivity.description}</p>
-                        
-                        {selectedActivity.location && (
-                            <div className="flex items-center gap-2 text-sm text-gray-600 my-6 not-prose p-4 bg-bamboo-50/50 rounded-lg border border-bamboo-100/50">
-                                <MapPin size={18} className="text-bamboo-600 shrink-0"/>
-                                <span><span className="font-bold">活动地点：</span>{selectedActivity.location}</span>
-                            </div>
-                        )}
-
-                        <div className="text-sm text-gray-400 italic mt-8 border-t border-gray-100 pt-4">
-                            更多活动细节请关注社团官方QQ群通知或咨询社团负责人。
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-      )}
     </section>
   );
 };

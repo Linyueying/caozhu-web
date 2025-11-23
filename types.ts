@@ -3,7 +3,8 @@ export enum View {
   HOME = 'HOME',
   WORKS = 'WORKS',
   ACTIVITIES = 'ACTIVITIES',
-  READING = 'READING' // Added dedicated reading view
+  READING = 'READING', // Dedicated reading view
+  ACTIVITY_DETAIL = 'ACTIVITY_DETAIL' // Added dedicated activity detail view
 }
 
 export interface LiteraryWork {

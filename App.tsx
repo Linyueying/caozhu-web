@@ -1,11 +1,13 @@
+
 import React, { useState, useRef } from 'react';
-import { View, LiteraryWork } from './types';
+import { View, LiteraryWork, Activity } from './types';
 import { Navigation } from './components/Navigation';
 import { Hero } from './components/Hero';
 import { About } from './components/About';
 import { Showcase } from './components/Showcase';
 import { WorksGallery } from './components/WorksGallery';
 import { ActivityTimeline } from './components/ActivityTimeline';
+import { ActivityDetail } from './components/ActivityDetail';
 import { InkCursor } from './components/InkCursor';
 import { DailyVerse } from './components/DailyVerse';
 import { ReadingRoom } from './components/ReadingRoom';
@@ -14,25 +16,30 @@ import { Users, ArrowUpRight, X, MessageCircle } from 'lucide-react';
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<View>(View.HOME);
   const [readingWork, setReadingWork] = useState<LiteraryWork | null>(null);
+  const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
   const [isJoinModalOpen, setIsJoinModalOpen] = useState(false);
   
   // Ref to store the scroll position of the main feed
   const scrollPositionRef = useRef<number>(0);
 
   const handleReadWork = (work: LiteraryWork) => {
-      // Save current scroll position before switching
       scrollPositionRef.current = window.scrollY;
       setReadingWork(work);
       setCurrentView(View.READING);
   };
 
+  const handleViewActivity = (activity: Activity) => {
+      scrollPositionRef.current = window.scrollY;
+      setSelectedActivity(activity);
+      setCurrentView(View.ACTIVITY_DETAIL);
+  };
+
   const handleBackToHome = () => {
       setCurrentView(View.HOME);
-      // Use setTimeout to allow React to re-render the Home view before scrolling
       setTimeout(() => {
           window.scrollTo({
               top: scrollPositionRef.current,
-              behavior: 'auto' // Instant jump is better for "back" navigation than smooth scroll
+              behavior: 'auto'
           });
       }, 0);
   };
@@ -48,22 +55,31 @@ const App: React.FC = () => {
         return readingWork ? (
             <ReadingRoom 
                 work={readingWork} 
-                onBack={handleBackToHome} 
+                onBack={handleBackToHome}
+                onViewMore={handleViewMoreWorks} 
             />
         ) : (
             <div className="pt-20 text-center">文章加载错误</div>
         );
+      case View.ACTIVITY_DETAIL:
+        return selectedActivity ? (
+            <ActivityDetail
+                activity={selectedActivity}
+                onBack={handleBackToHome}
+            />
+        ) : (
+             <div className="pt-20 text-center">活动加载错误</div>
+        );
       case View.WORKS:
         return (
           <div className="min-h-screen bg-mist">
-            {/* Use the new Gallery grid view instead of Showcase */}
             <WorksGallery onRead={handleReadWork} />
           </div>
         );
       case View.ACTIVITIES:
         return (
           <div className="pt-20 min-h-screen bg-mist">
-            <ActivityTimeline />
+            <ActivityTimeline onViewActivity={handleViewActivity} />
           </div>
         );
       case View.HOME:
@@ -72,10 +88,9 @@ const App: React.FC = () => {
           <>
             <Hero onNavigate={setCurrentView} onJoin={() => setIsJoinModalOpen(true)} />
             <About />
-            {/* Moved DailyVerse here, between About and Showcase */}
             <DailyVerse />
             <Showcase onRead={handleReadWork} onViewMore={handleViewMoreWorks} />
-            <ActivityTimeline />
+            <ActivityTimeline onViewActivity={handleViewActivity} />
             
             {/* Bottom Join Section */}
             <section id="join-us" className="py-24 bg-gradient-to-b from-white to-bamboo-50/30 relative overflow-hidden border-t border-gray-100">
@@ -114,7 +129,7 @@ const App: React.FC = () => {
       <InkCursor />
       
       {/* Hide Navigation when reading for immersion */}
-      {currentView !== View.READING && (
+      {currentView !== View.READING && currentView !== View.ACTIVITY_DETAIL && (
         <Navigation currentView={currentView} onChangeView={setCurrentView} />
       )}
 
@@ -123,7 +138,7 @@ const App: React.FC = () => {
       </main>
       
       {/* Footer - Only show on non-reading views */}
-      {currentView !== View.READING && (
+      {currentView !== View.READING && currentView !== View.ACTIVITY_DETAIL && (
         <footer className="bg-white py-8 border-t border-gray-100 relative z-10">
             <div className="max-w-6xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4 opacity-60 hover:opacity-100 transition-opacity">
             <div className="flex items-center gap-2">

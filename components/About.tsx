@@ -58,8 +58,26 @@ const HighlightText: React.FC<{ text: string }> = ({ text }) => {
 };
 
 export const About: React.FC = () => {
+  const sectionRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('reveal-visible');
+          }
+        });
+      },
+      { threshold: 0.1 }
+    );
+
+    if (sectionRef.current) observer.observe(sectionRef.current);
+    return () => observer.disconnect();
+  }, []);
+
   return (
-    <section className="py-32 bg-gradient-to-b from-mist via-white to-mist relative overflow-hidden">
+    <section ref={sectionRef} className="py-32 bg-gradient-to-b from-mist via-white to-mist relative overflow-hidden reveal-on-scroll">
       
       {/* Decorative Background Watermark */}
       <div className="absolute top-20 right-[-5%] text-[180px] md:text-[350px] font-bold text-bamboo-50 pointer-events-none select-none leading-none z-0 font-serif opacity-60 mix-blend-multiply">
